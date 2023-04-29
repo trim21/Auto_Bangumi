@@ -5,7 +5,7 @@ FROM python:3.11-slim as builder
 RUN  --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
      --mount=target=/var/cache/apt,type=cache,sharing=locked \
     apt-get update &&\
-    apt-get install -y ccache build-essential libxml2-dev libxslt-dev xz-utils unzip jq bash
+    apt-get install -y ccache build-essential libxml2-dev zlib1g-dev libxslt-dev xz-utils unzip jq bash
 
 
 ARG S6_OVERLAY_VERSION=3.1.4.1
@@ -42,8 +42,7 @@ ENV S6_SERVICES_GRACETIME=30000 \
 COPY --from=builder /root/.local /root/.local
 COPY --from=builder /s6/ /
 COPY --from=builder /app/templates /app/
-COPY --from=builder /bin/jq /bin/
-COPY --from=builder /bin/bash /bin/
+COPY --from=builder /bin/jq /bin/bash /bin/
 
 # Add user
 RUN mkdir /ab && \
