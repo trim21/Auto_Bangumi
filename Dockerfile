@@ -40,11 +40,10 @@ COPY --from=pip-builder /s6/ /
 RUN   --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
       --mount=target=/var/cache/apt,type=cache,sharing=locked \
     apt-get update && \
-    apt-get install -y curl wget jq bash && \
+    apt-get install -y curl jq bash && \
     # Download WebUI
-    wget "https://github.com/Rewrite0/Auto_Bangumi_WebUI/releases/latest/download/dist.zip" -O /tmp/dist.zip && \
-    unzip -q -d /tmp /tmp/dist.zip && \
-    mv /tmp/dist /app/templates && \
+    curl -sL "https://github.com/Rewrite0/Auto_Bangumi_WebUI/releases/latest/download/dist.zip" -O /tmp/dist.zip | busybox unzip -q -d /app - && \
+    mv /app/dist /app/templates && \
     # Add user
     mkdir /ab && \
     addgroup -S ab -g 911 && \
