@@ -18,7 +18,7 @@ COPY requirements.txt .
 
 RUN   --mount=target=/root/.cache/pip,type=cache,sharing=locked \
       --mount=target=/root/.ccache,type=cache,sharing=locked \
-    pip install --user -r requirements.txt
+    pip install cython && pip install --user -r requirements.txt
 
 
 # Download WebUI without curl/wget
