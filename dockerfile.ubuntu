@@ -1,0 +1,62 @@
+# syntax=docker/dockerfile:1
+
+FROM python:3.11-slim as pip-builder
+
+RUN  --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
+     --mount=target=/var/cache/apt,type=cache,sharing=locked \
+    apt-get update &&\
+    apt-get install -y ccache build-essential libxml2-dev libxslt-dev xz-utils
+
+
+ARG S6_OVERLAY_VERSION=3.1.4.1
+ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp
+RUN mkdir -p /s6/ && tar -C /s6/ -Jxpf /tmp/s6-overlay-x86_64.tar.xz
+
+
+WORKDIR /app
+COPY requirements.txt .
+
+RUN   --mount=target=/root/.cache/pip,type=cache,sharing=locked \
+      --mount=target=/root/.ccache,type=cache,sharing=locked \
+    pip install --user -r requirements.txt
+
+FROM python:3.11-slim
+
+ENV S6_SERVICES_GRACETIME=30000 \
+    S6_KILL_GRACETIME=60000 \
+    S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0 \
+    S6_SYNC_DISKS=1 \
+    TERM="xterm" \
+    HOME="/ab" \
+    LANG="C.UTF-8" \
+    TZ=Asia/Shanghai \
+    PUID=1000 \
+    PGID=1000 \
+    UMASK=022
+
+COPY --from=pip-builder /root/.local /root/.local
+COPY --from=pip-builder /s6/ /
+
+RUN   --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
+      --mount=target=/var/cache/apt,type=cache,sharing=locked \
+    apt-get update && \
+    apt-get install -y curl wget jq bash && \
+    # Download WebUI
+    wget "https://github.com/Rewrite0/Auto_Bangumi_WebUI/releases/latest/download/dist.zip" -O /tmp/dist.zip && \
+    unzip -q -d /tmp /tmp/dist.zip && \
+    mv /tmp/dist /app/templates && \
+    # Add user
+    mkdir /ab && \
+    addgroup -S ab -g 911 && \
+    adduser -S ab -G ab -h /ab -s /bin/bash -u 911 && \
+    rm -rf \
+        /root/.cache \
+        /tmp/*
+
+COPY --chmod=755 src/. .
+COPY --chmod=755 ./docker /
+
+ENTRYPOINT [ "/init" ]
+
+EXPOSE 7892
+VOLUME [ "/app/config" , "/app/data" ]

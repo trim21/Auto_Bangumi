@@ -3,12 +3,15 @@
 FROM python:3.11-alpine AS Builder
 WORKDIR /app
 COPY requirements.txt .
-RUN apk add --no-cache --virtual=build-dependencies \
+
+RUN --mount=target=/root/.ccache,type=cache,sharing=locked  \
+   apk add --no-cache --virtual=build-dependencies \
         libxml2-dev \
         libxslt-dev \
         gcc \
         g++ \
         linux-headers \
+        ccache \
         build-base && \
     python3 -m pip install --upgrade pip && \
     pip install cython && \
