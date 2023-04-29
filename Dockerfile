@@ -37,12 +37,14 @@ ENV S6_SERVICES_GRACETIME=30000 \
 COPY --from=pip-builder /root/.local /root/.local
 COPY --from=pip-builder /s6/ /
 
+# Download WebUI without curl/wget
+ADD "https://github.com/Rewrite0/Auto_Bangumi_WebUI/releases/latest/download/dist.zip" /tmp/dist.zip
+
 RUN   --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
       --mount=target=/var/cache/apt,type=cache,sharing=locked \
     apt-get update && \
-    apt-get install -y curl jq bash && \
-    # Download WebUI
-    curl -sL "https://github.com/Rewrite0/Auto_Bangumi_WebUI/releases/latest/download/dist.zip" -O /tmp/dist.zip | busybox unzip -q -d /app - && \
+    apt-get install -y jq bash && \
+    busybox unzip -q -d /app /tmp/dist.zip && \
     mv /app/dist /app/templates && \
     # Add user
     mkdir /ab && \
