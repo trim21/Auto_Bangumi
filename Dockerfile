@@ -46,8 +46,8 @@ COPY --from=builder /usr/bin/jq /bin/bash /bin/
 
 # Add user
 RUN mkdir /ab && \
-    addgroup -S ab -g 911 && \
-    adduser -S ab -G ab -h /ab -s /bin/bash -u 911 && \
+    addgroup -S ab --gid 911 && \
+    adduser -S ab -G ab -h /ab --shell /bin/bash -u 911 && \
 
 COPY --chmod=755 src/. .
 COPY --chmod=755 ./docker /
