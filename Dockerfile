@@ -1,11 +1,11 @@
 # syntax=docker/dockerfile:1
 
-FROM python:3.11-slim as pip-builder
+FROM python:3.11-slim as builder
 
 RUN  --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
      --mount=target=/var/cache/apt,type=cache,sharing=locked \
     apt-get update &&\
-    apt-get install -y ccache build-essential libxml2-dev libxslt-dev xz-utils
+    apt-get install -y ccache build-essential libxml2-dev libxslt-dev xz-utils unzip
 
 
 ARG S6_OVERLAY_VERSION=3.1.4.1
@@ -19,6 +19,11 @@ COPY requirements.txt .
 RUN   --mount=target=/root/.cache/pip,type=cache,sharing=locked \
       --mount=target=/root/.ccache,type=cache,sharing=locked \
     pip install --user -r requirements.txt
+
+
+# Download WebUI without curl/wget
+ADD "https://github.com/Rewrite0/Auto_Bangumi_WebUI/releases/latest/download/dist.zip" /tmp/dist.zip
+RUN unzip -q -d /app/templates /tmp/dist.zip
 
 FROM python:3.11-slim
 
@@ -34,18 +39,14 @@ ENV S6_SERVICES_GRACETIME=30000 \
     PGID=1000 \
     UMASK=022
 
-COPY --from=pip-builder /root/.local /root/.local
-COPY --from=pip-builder /s6/ /
-
-# Download WebUI without curl/wget
-ADD "https://github.com/Rewrite0/Auto_Bangumi_WebUI/releases/latest/download/dist.zip" /tmp/dist.zip
+COPY --from=builder /root/.local /root/.local
+COPY --from=builder /s6/ /
+COPY --from=builder /app/templates /app/
 
 RUN   --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
       --mount=target=/var/cache/apt,type=cache,sharing=locked \
     apt-get update && \
     apt-get install -y jq bash && \
-    busybox unzip -q -d /app /tmp/dist.zip && \
-    mv /app/dist /app/templates && \
     # Add user
     mkdir /ab && \
     addgroup -S ab -g 911 && \
