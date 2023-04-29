@@ -42,7 +42,7 @@ ENV S6_SERVICES_GRACETIME=30000 \
 COPY --from=builder /root/.local /root/.local
 COPY --from=builder /s6/ /
 COPY --from=builder /app/templates /app/
-COPY --from=builder /usr/local/bin/jq /bin/bash /bin/
+COPY --from=builder /usr/bin/jq /bin/bash /bin/
 
 # Add user
 RUN mkdir /ab && \
