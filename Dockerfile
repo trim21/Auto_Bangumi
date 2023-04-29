@@ -1,28 +1,26 @@
 # syntax=docker/dockerfile:1
 
-FROM python:3.11-alpine AS Builder
+FROM python:3.11-slim as pip-builder
+
+RUN  --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
+     --mount=target=/var/cache/apt,type=cache,sharing=locked \
+    apt-get update &&\
+    apt-get install -y ccache build-essential libxml2-dev libxslt-dev xz-utils
+
+
+ARG S6_OVERLAY_VERSION=3.1.4.1
+ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp
+RUN mkdir -p /s6/ && tar -C /s6/ -Jxpf /tmp/s6-overlay-x86_64.tar.xz
+
+
 WORKDIR /app
 COPY requirements.txt .
 
-RUN --mount=target=/root/.ccache,type=cache,sharing=locked  \
-   apk add --no-cache --virtual=build-dependencies \
-        libxml2-dev \
-        libxslt-dev \
-        gcc \
-        g++ \
-        linux-headers \
-        ccache \
-        build-base && \
-    python3 -m pip install --upgrade pip && \
-    pip install cython && \
-    pip install --no-cache-dir -r requirements.txt && \
-    apk del --purge \
-        build-dependencies && \
-    rm -rf \
-        /root/.cache \
-        /tmp/*
+RUN   --mount=target=/root/.cache/pip,type=cache,sharing=locked \
+      --mount=target=/root/.ccache,type=cache,sharing=locked \
+    pip install --user -r requirements.txt
 
-FROM scratch AS APP
+FROM python:3.11-slim
 
 ENV S6_SERVICES_GRACETIME=30000 \
     S6_KILL_GRACETIME=60000 \
@@ -36,17 +34,13 @@ ENV S6_SERVICES_GRACETIME=30000 \
     PGID=1000 \
     UMASK=022
 
-COPY --from=Builder / /
+COPY --from=pip-builder /root/.local /root/.local
+COPY --from=pip-builder /s6/ /
 
-WORKDIR /app
-
-RUN apk add --no-cache \
-        curl \
-        wget \
-        jq \
-        shadow \
-        s6-overlay \
-        bash && \
+RUN   --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
+      --mount=target=/var/cache/apt,type=cache,sharing=locked \
+    apt-get update && \
+    apt-get install -y curl wget jq bash && \
     # Download WebUI
     wget "https://github.com/Rewrite0/Auto_Bangumi_WebUI/releases/latest/download/dist.zip" -O /tmp/dist.zip && \
     unzip -q -d /tmp /tmp/dist.zip && \
